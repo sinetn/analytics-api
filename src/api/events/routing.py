@@ -28,10 +28,11 @@ def read_events() -> EventListSchema:
 
 @router.post("/")
 def create_events(payload: EventCreateSchema) -> EventSchema:
-    print(payload.page)
+    data = payload.model_dump()  # payload to dict using pydantic
     return {
         # a single row
-        "id": 123
+        "id": 123,
+        **data  # unpacking the dict
     }
 
 # GET /api/events/123
@@ -47,10 +48,11 @@ def get_event(event_id: int) -> EventSchema:
 
 @router.put("/{event_id}")
 def update_event(event_id: int, payload: EventUpdateSchema) -> EventSchema:
-    print(payload.description)
+    data = payload.model_dump()
     return {
         # a single row
-        "id": event_id
+        "id": event_id,
+        **data
     }
 
 # @router.delete("/{event_id}")

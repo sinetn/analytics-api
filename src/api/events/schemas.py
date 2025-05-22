@@ -1,5 +1,5 @@
-from typing import List
-from pydantic import BaseModel
+from typing import List, Optional
+from pydantic import BaseModel, Field
 
 '''
 id
@@ -10,6 +10,8 @@ description
 
 class EventCreateSchema(BaseModel):
     page: str
+    description: Optional[str] = Field(
+        default="The description of the event")  # optional field
 
 
 class EventUpdateSchema(BaseModel):
@@ -17,7 +19,9 @@ class EventUpdateSchema(BaseModel):
 
 
 class EventSchema(BaseModel):
-    id: int
+    id: int  # required field
+    page: Optional[str] = ""  # optional field
+    description: Optional[str] = ""  # optional field
 
 
 class EventListSchema(BaseModel):
