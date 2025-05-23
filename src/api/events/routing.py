@@ -1,10 +1,14 @@
-from fastapi import APIRouter
-from .schemas import (
-    EventSchema,
+from api.db.config import DATABASE_URL
+import os
+from fastapi import APIRouter, Depends
+from .models import (
+    EventModel,
     EventListSchema,
     EventCreateSchema,
     EventUpdateSchema
 )
+from api.db.session import get_session
+from sqlmodel import Session
 
 router = APIRouter()
 
@@ -15,6 +19,7 @@ router = APIRouter()
 
 @router.get("/")
 def read_events() -> EventListSchema:
+    print(os.environ.get("DATABASE_URL", DATABASE_URL))
     return {
         # a bunch of items in a table
         "results": [{"id": 1}, {"id": 2}, {"id": 3}],
@@ -26,20 +31,22 @@ def read_events() -> EventListSchema:
 # POST /api/events
 
 
-@router.post("/")
-def create_events(payload: EventCreateSchema) -> EventSchema:
+@router.post("/", response_model=EventModel)
+def create_event(
+        payload: EventCreateSchema,
+        session: Session = Depends(get_session)):
     data = payload.model_dump()  # payload to dict using pydantic
-    return {
-        # a single row
-        "id": 123,
-        **data  # unpacking the dict
-    }
+    obj = EventModel.model_validate(data)
+    session.add(obj)  # preparing to add to the database
+    session.commit()  # actually add to the database
+    session.refresh(obj)  # refresh the object to get the id, to get id ...
+    return obj
 
 # GET /api/events/123
 
 
 @router.get("/{event_id}")
-def get_event(event_id: int) -> EventSchema:
+def get_event(event_id: int) -> EventModel:
     return {
         # a single row
         "id": event_id
@@ -47,7 +54,7 @@ def get_event(event_id: int) -> EventSchema:
 
 
 @router.put("/{event_id}")
-def update_event(event_id: int, payload: EventUpdateSchema) -> EventSchema:
+def update_event(event_id: int, payload: EventUpdateSchema) -> EventModel:
     data = payload.model_dump()
     return {
         # a single row

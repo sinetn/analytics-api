@@ -1,10 +1,26 @@
+from contextlib import asynccontextmanager
 from typing import Union
 
 from fastapi import FastAPI
 from api.events import router as events_router
+from api.db.session import init_db
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # before app startup
+    init_db()
+    yield
+    # clean up
+
+app = FastAPI(lifespan=lifespan)
 app.include_router(events_router, prefix="/api/events")
+
+
+# # old method
+# @app.on_event("startup")
+# def on_startup():
+#     print("init method for db")
 
 
 @app.get("/")
