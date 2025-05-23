@@ -1,6 +1,6 @@
 from api.db.config import DATABASE_URL
 import os
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from .models import (
     EventModel,
     EventListSchema,
@@ -8,7 +8,7 @@ from .models import (
     EventUpdateSchema
 )
 from api.db.session import get_session
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 router = APIRouter()
 
@@ -17,13 +17,17 @@ router = APIRouter()
 # GET /api/events
 
 
-@router.get("/")
-def read_events() -> EventListSchema:
-    print(os.environ.get("DATABASE_URL", DATABASE_URL))
+@router.get("/", response_model=EventListSchema)
+def read_events(session: Session = Depends(get_session)):
+    # print(os.environ.get("DATABASE_URL", DATABASE_URL))
+    query = select(EventModel).order_by(EventModel.id.desc()
+                                        # limit the number of rows and change the order
+                                        ).limit(10)
+    results = session.exec(query).all()
     return {
         # a bunch of items in a table
-        "results": [{"id": 1}, {"id": 2}, {"id": 3}],
-        "count": 3
+        "results": results,
+        "count": len(results)
     }
 
 # SEND DATA HERE
@@ -45,26 +49,48 @@ def create_event(
 # GET /api/events/123
 
 
-@router.get("/{event_id}")
-def get_event(event_id: int) -> EventModel:
+@router.get("/{event_id}", response_model=EventModel)
+def get_event(event_id: int, session: Session = Depends(get_session)):
+    query = select(EventModel).where(EventModel.id == event_id)
+    result = session.exec(query).first()
+    if not result:
+        raise HTTPException(status_code=404, detail="Event not found")
+    return result
+    # { if you are not returning dictionaries do not use {}
+    #     # # a single row
+    #     # "id": event_id
+
+    # }
+
+
+@router.put("/{event_id}", response_model=EventModel)
+def update_event(
+        event_id: int,
+        payload: EventUpdateSchema,
+        session: Session = Depends(get_session)):
+
+    query = select(EventModel).where(EventModel.id == event_id)
+    obj = session.exec(query).first()
+    if not obj:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    data = payload.model_dump()
+    for key, value in data.items():
+        setattr(obj, key, value)
+    session.add(obj)  # preparing to add to the database
+    session.commit()  # actually add to the database
+    session.refresh(obj)  # refresh the object to get the id, to get id ...
+    return obj
+    # {
+    #     # a single row
+    #     "id": event_id,
+    #     **data
+    # }
+
+
+@router.delete("/{event_id}", response_model=EventModel)
+def delete_event(event_id: int, session: Session = Depends(get_session)):
     return {
         # a single row
         "id": event_id
     }
-
-
-@router.put("/{event_id}")
-def update_event(event_id: int, payload: EventUpdateSchema) -> EventModel:
-    data = payload.model_dump()
-    return {
-        # a single row
-        "id": event_id,
-        **data
-    }
-
-# @router.delete("/{event_id}")
-# def delete_event(event_id: int) -> EventSchema:
-#     return {
-#         # a single row
-#         "id": event_id
-#     }
