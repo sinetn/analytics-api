@@ -9,4 +9,4 @@ becomes
 - `docker compose down` or `docker compose down -v` (to remove volumes)
 
 - to run a docker command line: 
-    - `docker compose run app /bin/bash` or `docker compose run app python`
+    - `docker compose run app bash` or `docker compose run app python`
